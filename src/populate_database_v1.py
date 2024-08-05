@@ -9,7 +9,7 @@ load_dotenv()
 
 # First read all metadata.yml files in assay into Pandas dataframe
 
-yml_files = glob.glob(f"{os.environ['PROJECT_HOME']}/assays/**/*.yml", recursive=True)
+yml_files = glob.glob(f"{os.environ['PROJECT_HOME']}/assays/*/*.yml", recursive=True)
 
 metadata_dict = {}
 for file in yml_files:
@@ -21,14 +21,28 @@ for file in yml_files:
     else:
         metadata_dict[assay_path] = contents
 
-# Read into Pandas dataframe
+# Check all assays used latest cruft schema version
+
 metadata = pd.DataFrame.from_dict(metadata_dict, orient="index")
-metadata.head(50)
+
+# Check all assays use correct metadata schema version
+
+if not metadata['schema_version'].nunique() == 1:
+    raise ValueError("First run cruft update on assays")
+
+metadata = metadata[["assay_id", "assay", "owner", "date", "eln_id", "technology", "sequencer", "seq_kit",
+"n_samples", "is_paired", "pipeline", "processed_by", "organism", "organism_version", "organism_subgroup",
+"origin", "short_desc", "long_desc", "note", "genomics_path"]]
+
+# Some checks
+
+# print(list(metadata.columns))
+# metadata.to_csv('db/metadata.csv', sep='\t', index=False)
 
 
 # Connect to SQLite database
 
-connection = sqlite3.connect("../db/ngs_catalogue.db")
+connection = sqlite3.connect("db/ngs_catalogue.db")
 connection.execute("PRAGMA foreign_keys = ON")
 cursor = connection.cursor()
 
@@ -53,19 +67,38 @@ cursor.execute(update)
 
 ## pipelines
 pline = list(set(metadata[["pipeline"]].itertuples(index=False, name=None)))
-cursor.executemany("INSERT INTO pipelines (name) VALUES(?)", pline)
+cursor.executemany("INSERT INTO pipelines (pipeline_name) VALUES(?)", pline)
 
 ## assay
 data = list(metadata.itertuples(index=False, name=None))
 
-cursor.executemany(
-    """INSERT INTO assay (id, owner_id, created_at, codename, technology, sequencer_id, seq_kit_id, n_samples, is_paired, pipeline_id, processed_by_id, organism, organism_subgroup, origin, genomics_path, short_desc, long_desc, organism_version) \
-                   VALUES(?, (SELECT user_id FROM users WHERE first_last_name=?),
-                    ?, ?, ?, (SELECT seq_id FROM sequencers WHERE model = ?),
-                      (SELECT seq_id FROM sequencing_kits WHERE kit = ?),
-                        ?, ?, (SELECT pipeline_id FROM pipelines WHERE name = ?),
-                          (SELECT user_id FROM users WHERE first_last_name=?),
-                            ?, ?, ?, ?, ?, ?, ?)""",
+cursor.executemany("""
+    INSERT INTO assay
+    (id, assay, owner_id, created_on, eln_id, technology,
+    sequencer_id, seq_kit_id, n_samples, is_paired, pipeline_id, processed_by_id,
+    organism, organism_version, organism_subgroup, origin, short_desc, long_desc, note, genomics_path)
+    VALUES(
+        ?,
+        ?,
+        (SELECT user_id FROM users WHERE first_last_name=?),
+        ?,
+        ?,
+        ?,
+        (SELECT seq_id FROM sequencers WHERE model = ?),
+        (SELECT seq_id FROM sequencing_kits WHERE kit = ?),
+        ?,
+        ?,
+        (SELECT pipeline_id FROM pipelines WHERE pipeline_name = ?),
+        (SELECT user_id FROM users WHERE first_last_name=?),
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?)
+        """,
     data,
 )
 
