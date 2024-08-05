@@ -63,12 +63,12 @@ database = df[
 ]
 database["created_on"] = pd.to_datetime(database["created_on"], format="%Y%m%d")
 database["created_on"] = database["created_on"].dt.date
-database = database.sort_values("created_on")
+database = database.sort_values("created_on", ascending=False)
 
-print(database.isnull().any())
+# print(database.isnull().any())
 database.fillna("UNKNOWN", inplace=True)
 
-database.to_csv('db/database.csv', sep='\t', index=False)
+# database.to_csv('db/database.csv', sep='\t', index=False)
 
 
 # Serve panel database
@@ -102,32 +102,32 @@ df_widget = pn.widgets.Tabulator(
 )
 df_widget
 
-# own = pn.widgets.MultiSelect(
-#     name="owner", options=list(database.owner.unique()), margin=(0, 20, 0, 0)
-# )
-# df_widget.add_filter(own, "owner")
+own = pn.widgets.MultiSelect(
+    name="owner", options=list(database.owner.unique()), margin=(0, 20, 0, 0)
+)
+df_widget.add_filter(own, "owner")
 
-# org = pn.widgets.MultiSelect(
-#     name="organism", options=list(database.organism.unique()), margin=(0, 20, 0, 0)
-# )
-# df_widget.add_filter(org, "organism")
+org = pn.widgets.MultiSelect(
+    name="organism", options=list(database.organism.unique()), margin=(0, 20, 0, 0)
+)
+df_widget.add_filter(org, "organism")
 
-# desc = pn.widgets.TextInput(name="short_desc", placeholder="Enter key word...")
-
-
-# def contains_filter(database, pattern, column):
-#     if desc.value:
-#         return database[database[column].str.contains(pattern)]
-#     else:
-#         return database
+desc = pn.widgets.TextInput(name="short_desc", placeholder="Enter key word...")
 
 
-# df_widget.add_filter(pn.bind(contains_filter, pattern=desc, column="short_desc"))
+def contains_filter(database, pattern, column):
+    if desc.value:
+        return database[database[column].str.contains(pattern)]
+    else:
+        return database
+
+
+df_widget.add_filter(pn.bind(contains_filter, pattern=desc, column="short_desc"))
 
 
 # show all metadata for dataset on row click
 def show_row_info(event):
-    # print(f'Clicked cell in {event.column} column, row {event.row}')
+    print(f'Clicked cell in column {event.column}, row {event.row}')
     index = event.row
     data = database.loc[index, :]
 
@@ -147,7 +147,8 @@ pn.template.FastListTemplate(
     title="NGS Catalogue",
     accent="#4051B5",
     main=[
-        #pn.Row(own, org, desc, height=150),
+        pn.Row(own, org, desc, height=150),
+        #pn.Row(own, org, height=150),
         pn.Row(df_widget, height=600, scroll=True),
     ],
     main_max_width="1500px",

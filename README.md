@@ -3,7 +3,7 @@
 ## Populate database
 
 ```bash
-cd /maps/projects/dan1/data/Brickman/projects/ngs_catalogue/
+cd projects/ngs_catalogue/
 module load miniconda/latest
 source activate ngs_catalogue
 
@@ -19,10 +19,10 @@ python src/populate_database_v1.py
 
 
 ## Run app on DanGPU for testing
-** Note**: This works only when ssh directly into dangpu (not on other computing nodes)
+**Note**: This works only when ssh directly into dangpu (not on other computing nodes)
 
 ```bash
-cd /maps/projects/dan1/data/Brickman/projects/ngs_catalogue/
+cd projects/ngs_catalogue/
 module load miniconda/latest
 source activate ngs_catalogue
 panel serve src/database_browser_v1.py --autoreload
