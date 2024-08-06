@@ -19,4 +19,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY ./src/* /app/
 
-CMD panel serve database_browser_v1.py --address 0.0.0.0 --port 5006 --prefix=/catalogue/ --allow-websocket-origin="*" --disable-index-redirect --use-xheaders
+CMD ["panel", "serve", "database_browser_v1.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*"]
