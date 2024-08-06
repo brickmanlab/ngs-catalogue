@@ -1,5 +1,6 @@
-import pandas as pd
 import sqlite3
+
+import pandas as pd
 import panel as pn
 
 # connect to the database
@@ -74,7 +75,7 @@ database.fillna("UNKNOWN", inplace=True)
 
 
 # Define widgets
-
+pn.extension(inline=True)
 pn.extension(sizing_mode="stretch_width")
 
 # note: visible fields: id, assay, owner, created_on, organism,short_desc
