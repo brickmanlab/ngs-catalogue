@@ -2,6 +2,17 @@
 
 ## Development
 
+### Local
+
+```
+module load miniconda/latest && source activate ngs_catalogue
+bin/initdb.py
+
+panel serve src/database_browser_v1.py --autoreload
+```
+
+### Docker
+
 Build image
 
 ```bash
