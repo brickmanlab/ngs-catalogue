@@ -163,7 +163,4 @@ cython_debug/
 
 # Folders and files
 assays/
-db/*.db
-db/*.csv
-src/*v0.py
-src/schema/*v0.sql
+db/
