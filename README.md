@@ -1,31 +1,18 @@
 # ngs-catalogue
 
-## Populate database
+## Development
+
+Build image
 
 ```bash
-cd projects/ngs_catalogue/
-module load miniconda/latest
-source activate ngs_catalogue
-
-#First remove current database version
-rm db/ngs_catalogue.db
-
-# Create empty database
-sqlite3 db/ngs_catalogue.db < src/schema/database_v1.sql
-
-# Populate database
-python src/populate_database_v1.py
+podman build . -t brickmanlab/ngs-catalogue:"$(git rev-parse --short HEAD)"
 ```
 
-
-## Run app on DanGPU for testing
-**Note**: This works only when ssh directly into dangpu (not on other computing nodes)
+Run application
 
 ```bash
-cd projects/ngs_catalogue/
-module load miniconda/latest
-source activate ngs_catalogue
-panel serve src/database_browser_v1.py --autoreload
-# locally
-ssh -fNL localhost:5006:localhost:5006 USER@dangpu01fl.unicph.domain
+module load miniconda/latest && source activate ngs_catalogue
+bin/initdb.py
+
+podman run -d -p 5006:5006 -v ./db:/app/db brickmanlab/ngs-catalogue:"$(git rev-parse --short HEAD)"
 ```
