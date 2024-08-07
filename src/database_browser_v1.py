@@ -65,7 +65,7 @@ database = df[
         "short_desc",
         "long_desc",
     ]
-]
+].copy()
 database["created_on"] = pd.to_datetime(database["created_on"], format="%Y%m%d")
 database["created_on"] = database["created_on"].dt.date
 database = database.sort_values("created_on", ascending=False)
