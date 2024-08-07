@@ -19,5 +19,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY ./src/* /app/
 
-ENV BOKEH_RESOURCES="cdn"
+ENV BOKEH_RESOURCES="inline"
 CMD ["bokeh", "serve", "database_browser_v1.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*"]
