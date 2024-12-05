@@ -23,4 +23,5 @@ podman save \
     ngs-catalogue:$VERSION
 
 echo "Copy 'db' folder"
-rsync -avzh db $CELLY_PATH/
+cp -R db $CELLY_PATH/
+# rsync -avzh db $CELLY_PATH/
