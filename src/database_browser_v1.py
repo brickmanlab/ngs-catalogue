@@ -71,9 +71,6 @@ def show_row_info(event):
 
     {data["long_desc"]}
     """
-    # meta = "**Assay Details**\n\n"
-    # for column, value in data.items():
-    #     meta += f"**{column}:** {value}\n\n"
 
     meta_placeholder.object = meta
     meta_clone_btn.__setattr__("visible", True)
@@ -186,4 +183,3 @@ pn.template.FastListTemplate(
     raw_css=["div.card-margin:nth-child(2) { max-height: 750px; }"],
 ).servable()
 
-# [fixed, stretch_width, stretch_height, stretch_both, scale_width, scale_height, scale_both, None]
