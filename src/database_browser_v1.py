@@ -1,87 +1,91 @@
-import sqlite3
-
-import pandas as pd
 import panel as pn
 
-# connect to the database
-
-connection = sqlite3.connect("db/ngs_catalogue.db")
-connection.execute("PRAGMA foreign_keys = ON")
-
-query = """
-        SELECT
-        a.*,
-        u1.first_last_name AS owner,
-        u2.first_last_name AS processed_by,
-        s.model AS sequencer,
-        k.kit AS seq_kit,
-        p.pipeline_name AS pipeline
-        FROM
-        assay as a
-        LEFT JOIN
-        users AS u1 ON a.owner_id = u1.user_id
-        LEFT JOIN
-        users AS u2 ON a.processed_by_id = u2.user_id
-        LEFT JOIN
-        sequencers AS s ON a.sequencer_id = s.seq_id
-        LEFT JOIN
-        sequencing_kits AS k on a.seq_kit_id = k.seq_id
-        LEFT JOIN
-        pipelines AS p ON a.pipeline_id = p.pipeline_id;        
-        """
-
-# read query result into pandas dataframe
-
-df = pd.read_sql_query(query, connection)
-
-# close database connection
-
-connection.close()
-
-df.to_csv("db/db.csv", sep="\t", index=False)
-
-# remove foreign key columns and order by date ascending
-
-database = df[
-    [
-        "id",
-        "assay",
-        "owner",
-        "created_on",
-        "eln_id",
-        "technology",
-        "sequencer",
-        "seq_kit",
-        "n_samples",
-        "is_paired",
-        "pipeline",
-        "processed_by",
-        "organism",
-        "organism_version",
-        "organism_subgroup",
-        "origin",
-        "note",
-        "genomics_path",
-        "short_desc",
-        "long_desc",
-    ]
-].copy()
-database["created_on"] = pd.to_datetime(database["created_on"], format="%Y%m%d")
-database["created_on"] = database["created_on"].dt.date
-database = database.sort_values("created_on", ascending=False)
-database = database.reset_index(drop=True)
-
-database.fillna("UNKNOWN", inplace=True)
-
+from utils import get_database
 
 # Define widgets
 pn.extension(inline=True)
 pn.extension("tabulator")
-pn.extension(sizing_mode="stretch_width")
+pn.extension(sizing_mode="sizing_mode")
+
+DATABASE = get_database()
+
+
+def clear_filter(event):
+    global owner, assay, organism, origin
+    owner.value = []
+    assay.value = []
+    organism.value = []
+    origin.value = []
+
+
+def contains_filter(df, pattern, column):
+    if not pattern:
+        return df
+
+    return df[df[column].str.contains(pattern, case=False, na=False)]
+
+
+def close_meta(event):
+    global meta_placeholder
+
+    meta_clone_btn.__setattr__("visible", False)
+    meta_placeholder.__setattr__("visible", False)
+
+
+def show_row_info(event):
+    global DATABASE
+
+    # print(f'Clicked cell in column {event.column}, row {event.row}')
+    index = event.row
+    data = DATABASE.loc[index, :]
+
+    simlink = f"ln -s /maps/projects/dan1/data/Brickman/assays/{data['id']} /maps/projects/dan1/data/Brickman/projects/<PROJECT_ID>/data/assays/"
+    labguru_link = f"https://sund.labguru.com/knowledge/projects/{data['eln_id']}"
+
+    meta = f"""
+    ## {data["id"]}<br><button type="button" onclick="navigator.clipboard.writeText('{simlink}')">Copy link to assay</button>
+    NGS: {data["technology"]} <br>
+    Performed by **{data["owner"]}** on {data["created_on"]}<br>
+    Labguru id: [{data["eln_id"]}]({labguru_link})<br>
+    Origin: {data["origin"]}<br>
+
+    ### Samples
+    Num. of sampels: {data["n_samples"]}<br>
+    Organism: {data["organism"]}<br>
+    Organism subgroup: {data["organism_subgroup"]}<br>
+    Note: {data["note"]}
+
+    ### Sequencing details
+    Sequencer: {data["sequencer"]}<br>
+    Kit: {data["seq_kit"]}<br>
+    Read setup: {data["is_paired"]}<br>
+    
+    ### Preprocessing
+    User: {data["processed_by"]}<br>
+    Genome: {data["organism_version"]}<br>
+    Pipeline: {data["pipeline"]}<br>
+    Raw reads: {data["genomics_path"]}
+
+    ### Description
+    {data["short_desc"]}
+
+    {data["long_desc"]}
+    """
+    # meta = "**Assay Details**\n\n"
+    # for column, value in data.items():
+    #     meta += f"**{column}:** {value}\n\n"
+
+    meta_placeholder.object = meta
+    meta_clone_btn.__setattr__("visible", True)
+    meta_placeholder.__setattr__("visible", True)
+
+
+####################################################################################################
+# NAVBAR
 
 # note: visible fields: id, assay, owner, created_on, organism,short_desc
-df_widget = pn.widgets.Tabulator(
-    database,
+tabulator = pn.widgets.Tabulator(
+    DATABASE,
     disabled=True,
     selectable=True,
     hidden_columns=[
@@ -103,73 +107,82 @@ df_widget = pn.widgets.Tabulator(
         "long_desc",
     ],
 )
-df_widget
-
 
 # Selection widgets
-
-own = pn.widgets.MultiSelect(
-    name="owner", options=sorted(list(database.owner.unique())), margin=(0, 20, 0, 0)
+owner = pn.widgets.MultiSelect(
+    name="Owner (responsible person)",
+    options=sorted(list(DATABASE.owner.unique())),
+    size=5,
 )
-df_widget.add_filter(own, "owner")
 
-asy = pn.widgets.MultiSelect(
-    name="assay", options=sorted(list(database.assay.unique())), margin=(0, 20, 0, 0)
+assay = pn.widgets.MultiSelect(
+    name="Assay (NGS technology)",
+    options=sorted(list(DATABASE.assay.unique())),
+    size=5,
 )
-df_widget.add_filter(asy, "assay")
 
-org = pn.widgets.MultiSelect(
-    name="organism",
-    options=sorted(list(database.organism.unique())),
-    margin=(0, 20, 0, 0),
+organism = pn.widgets.MultiSelect(
+    name="Organism",
+    options=sorted(list(DATABASE.organism.unique())),
+    size=5,
 )
-df_widget.add_filter(org, "organism")
 
-desc = pn.widgets.TextInput(name="short_desc", placeholder="Enter key word...")
+origin = pn.widgets.MultiSelect(
+    name="Internal/External",
+    options=sorted(list(DATABASE.origin.unique())),
+)
 
+description = pn.widgets.TextInput(
+    name="Short description", placeholder="Enter key word..."
+)
 
-def contains_filter(database, pattern, column):
-    if desc.value:
-        return database[database[column].str.contains(pattern, case=False, na=False)]
-    else:
-        return database
-
-
-df_widget.add_filter(pn.bind(contains_filter, pattern=desc, column="short_desc"))
-
+clear_btn = pn.widgets.Button(
+    name="Clear filters", button_type="primary", sizing_mode="stretch_width"
+)
+clear_btn.on_click(clear_filter)
 
 # show all metadata for dataset on row click
+meta_clone_btn = pn.widgets.Button(name="X", button_type="primary", visible=False)
+meta_clone_btn.on_click(close_meta)
 
-meta_placeholder = pn.pane.Markdown("Click a record to see metadata here")
+meta_placeholder = pn.pane.Markdown(
+    "Click a record to see metadata here", width=450, visible=False
+)
 
+# Filters and events
+tabulator.add_filter(owner, "owner")
+tabulator.add_filter(assay, "assay")
+tabulator.add_filter(organism, "organism")
+tabulator.add_filter(origin, "origin")
+tabulator.add_filter(pn.bind(contains_filter, pattern=description, column="short_desc"))
 
-def show_row_info(event):
-    # print(f'Clicked cell in column {event.column}, row {event.row}')
-    index = event.row
-    data = database.loc[index, :]
+tabulator.on_click(show_row_info)
 
-    meta = "**Assay Details**\n\n"
-    for column, value in data.items():
-        meta += f"**{column}:** {value}\n\n"
-
-    meta_placeholder.object = meta
-
-
-df_widget.on_click(show_row_info)
-
-
-# populate layout template
-
-df_column = pn.Column(df_widget, width=1150, scroll=True)
-meta_column = pn.Column(meta_placeholder, width=310, scroll=True)
+####################################################################################################
+# BODY LAYOUT
 
 pn.template.FastListTemplate(
     site="Brickman Lab",
     title="NGS Catalogue",
     accent="#4051B5",
     main=[
-        pn.Row(own, asy, org, desc, height=100),
-        pn.Row(df_column, meta_column, height=650, scroll=False),
+        pn.Row(
+            pn.Column(owner),
+            pn.Column(assay),
+            pn.Column(organism),
+            pn.Column(origin),
+            pn.Column(description, clear_btn),
+        ),
+        pn.Row(
+            pn.Column(tabulator, scroll=True, sizing_mode="stretch_width"),
+            pn.Column(
+                pn.Row(meta_clone_btn),
+                pn.Row(meta_placeholder),
+                scroll=True,
+            ),
+        ),
     ],
-    main_max_width="1500px",
+    raw_css=["div.card-margin:nth-child(2) { max-height: 750px; }"],
 ).servable()
+
+# [fixed, stretch_width, stretch_height, stretch_both, scale_width, scale_height, scale_both, None]
