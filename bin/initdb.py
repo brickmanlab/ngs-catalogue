@@ -23,7 +23,6 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 
 def backup() -> None:
-
     if DB_FILE.exists():
         logging.info("Backing up previous database")
         DB_FILE.rename(DB_FILE.with_suffix(".db.backup"))
@@ -41,25 +40,28 @@ def initialize() -> None:
 
 
 def get_assays() -> pd.DataFrame:
-
     assays = {}
-    metadata_files = (Path(PROJECT_HOME) / "assays/").glob("*/*.yml")
+    metadata_files = list((Path(PROJECT_HOME) / "assays/").glob("*/metadata.yml"))
+    metadata_files += (Path(PROJECT_HOME) / "assays/").glob("*/description.yml")
 
     logging.info("Loading assays ...")
 
-    for meta_file in metadata_files:
-        key = meta_file.parent.name
-        content = yaml.safe_load(meta_file.read_bytes())
-        if key in assays:
-            assays[key].update(content)
-        else:
-            assays[key] = content
+    try:
+        for meta_file in metadata_files:
+            key = meta_file.parent.name
+            content = yaml.safe_load(meta_file.read_bytes())
+            if key in assays:
+                assays[key].update(content)
+            else:
+                assays[key] = content
+    except yaml.scanner.ScannerError as ex:
+        logging.error(f"Problem with parsing {meta_file}")
+        logging.exception(ex)
 
     return pd.DataFrame.from_dict(assays, orient="index")
 
 
 def get_schema_columns(version: str):
-
     WHITELIST = ["__prompts__", "_extensions"]
     URL = "https://raw.githubusercontent.com/brickmanlab/ngs-template/master/assay/cookiecutter.json"
     res = urllib.request.urlopen(URL)
@@ -78,7 +80,6 @@ def get_schema_columns(version: str):
 
 
 def populate() -> None:
-
     def get_(df: pd.DataFrame, column: str):
         if column in df.columns:
             return list(set(assays[[column]].itertuples(index=False, name=None)))
@@ -127,7 +128,6 @@ def populate() -> None:
         db.execute("PRAGMA foreign_keys = ON")
 
         with contextlib.closing(db.cursor()) as cursor:
-
             ## sequencing_kits
             cursor.executemany(
                 "INSERT INTO sequencing_kits (kit) VALUES(?)", get_(assays, "seq_kit")
@@ -192,7 +192,6 @@ def populate() -> None:
 
 
 def main():
-
     logging.info("Starting DB initialization ...")
 
     if not DB_PATH.exists():

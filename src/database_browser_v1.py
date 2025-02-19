@@ -83,6 +83,7 @@ def show_row_info(event):
 ####################################################################################################
 # NAVBAR
 
+
 # note: visible fields: id, assay, owner, created_on, organism,short_desc
 tabulator = pn.widgets.Tabulator(
     DATABASE,

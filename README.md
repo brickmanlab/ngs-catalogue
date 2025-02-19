@@ -4,7 +4,7 @@
 
 ### Local
 
-```
+```bash
 module load miniconda/latest && source activate ngs_catalogue
 bin/initdb.py
 
