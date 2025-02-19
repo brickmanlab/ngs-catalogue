@@ -1,0 +1,5 @@
+pandas>2
+panel>=1.6.1
+numpy
+PyYAML
+urllib3

@@ -163,4 +163,4 @@ cython_debug/
 
 # Folders and files
 assays/
-db/*.db
+db/
